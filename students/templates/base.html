@@ -1,0 +1,38 @@
+<html>
+    <head>
+        <title>Students Record Manager</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ" crossorigin="anonymous">
+    </head>
+    <body>
+        <nav class="navbar navbar-dark bg-primary">
+            <a class="navbar-brand" href="{{url_for('index')}}"><h2>Recorder</h2></a>
+            <p>
+            {% if user %}
+            <ul class="nav nav-pills nav-fill ml-auto">
+                    <a class="navbar-brand" href="{{ url_for('get_assignments') }}">Assignments</a>
+                    <a class="navbar-brand" href="{{ url_for('get_assesments') }}">Assesments</a>        
+                    <li class="nav-item">
+                      <a class="nav-link active bg-success" href="{{ url_for('logout') }}"><span class="fa fa-sign-out-alt">{{user.username}}</span></a>
+                    </li>
+            </ul>
+            {% else %}
+            <a class="btn btn-danger" href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+            </p>
+        </nav>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul>
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </body>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</html>

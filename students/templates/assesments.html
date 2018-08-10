@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="list-group">
+  <a class="btn btn-lg btn-success" href="/add_assesments" role="button">Add Assesment</a>
+  {% if assesments %}
+    {% for assesment in assesments %}
+    <hr>
+    <a href="/assesments/{{ assesment[0] }}" class="list-group-item list-group-item-action list-group-item-primary flex-column align-items-start active">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ assesment[2] }}</h5>
+        On: {{ assesment[4] }}
+      </div>
+      <p class="mb-1">{{ assesment[3] }}</p>
+      By: {{ assesment[5] }}
+    </a>
+    {% endfor %}
+    {% else %}
+    <h5>No assesments!</h5>
+    {% endif %}
+</div>
+{% endblock %}

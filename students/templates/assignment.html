@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="list-group">
+    {% for assignment in assignments %}
+<div class="jumbotron">
+    <h1 class="display-5">{{ assignment[2] }}</h1>
+    <p class="lead">{{ assignment[3] }}</p>
+    <p>Given: {{ assignment[4] }}</p>
+    <p>Submission: {{ assignment[6] }}</p>
+    <p>Teacher: {{ assignment[5] }}</p>
+    <p><a class="btn btn-lg btn-primary" href="/assignments/{{ assignment[0] }}/update" role="button">Update</a>
+        <a class="btn btn-lg btn-danger" href="/assignments/{{ assignment[0] }}/delete" role="button">Delete</a></p>
+  </div>
+    {% endfor %}
+</div>
+{% endblock %}

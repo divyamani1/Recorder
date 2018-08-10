@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h5 class="card-header">Sign Up</h5>
+    <div class="card-body">
+      <form action="" method="POST" novalidate>
+          {{ form.hidden_tag()}}
+          <p>
+            {{ form.first_name.label }} <br>
+            {{ form.first_name(size=32, class="form-control") }}
+            {% for error in form.first_name.errors %}
+            <span style="color: red;"> [{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>
+            {{ form.last_name.label }} <br>
+            {{ form.last_name(size=32, class="form-control") }}
+            {% for error in form.last_name.errors %}
+            <span style="color: red;"> [{{ error }}]</span>
+            {% endfor %}
+        </p>
+          <p>
+              {{ form.username.label }} <br>
+              {{ form.username(size=32, class="form-control") }}
+              {% for error in form.username.errors %}
+              <span style="color: red;"> [{{ error }}]</span>
+              {% endfor %}
+          </p>
+          <p>
+              {{ form.password.label }} <br>
+              {{ form.password(size=32, class="form-control") }}
+              {% for error in form.password.errors %}
+              <span style="color: red;"> [{{ error }}]</span>
+              {% endfor %}
+          </p>
+          <p> {{ form.submit(class="btn btn-primary") }}</p>
+      </form>
+    </div>
+  </div>
+{% endblock %}

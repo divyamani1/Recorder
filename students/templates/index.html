@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if user %}
+<div class="list-group">
+<nav class="navbar navbar-dark bg-success">
+        <p class="navbar-brand">Upcoming Assesments</p>
+</nav>
+    {% if upcoming_assesment %}
+    {% for assesment in upcoming_assesment %}
+<div class="jumbotron">
+    <h1 class="display-5">{{ assesment[2] }}</h1>
+    <p class="lead">{{ assesment[3] }}</p>
+    <p>On: {{ assesment[4] }}</p>
+    <p>Teacher: {{ assesment[5] }}</p>
+  </div>
+    {% endfor %}
+    {% else %}
+    <h5>No upcoming Assesments!</h5>
+    {% endif %}
+<nav class="navbar navbar-dark bg-success">
+        <p class="navbar-brand">Upcoming Assignments</p>
+    </nav>    
+        {% if upcoming_assignment %}
+{% for assignment in upcoming_assignment %}
+<div class="jumbotron">
+    <h1 class="display-5">{{ assignment[2] }}</h1>
+    <p class="lead">{{ assignment[3] }}</p>
+    <p>Given: {{ assignment[4] }}</p>
+    <p>Submission: {{ assignment[6] }}</p>
+    <p>Teacher: {{ assignment[5] }}</p>
+  </div>
+    {% endfor %}
+    {% else %}
+    <h5>No upcoming Assignments!</h5>
+    {% endif %}
+</div>
+{% else %}
+<h5>Please Login to continue..</h5>
+{% endif %}
+{% endblock %}

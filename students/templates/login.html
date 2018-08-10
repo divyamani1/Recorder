@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h5 class="card-header">Sign In</h5>
+    <div class="card-body">
+      <form action="" method="POST" novalidate>
+          {{ form.hidden_tag()}}
+          <p>
+              {{ form.username.label }} <br>
+              {{ form.username(size=32, class="form-control") }}
+              {% for error in form.username.errors %}
+              <span style="color: red;"> [{{ error }}]</span>
+              {% endfor %}
+          </p>
+          <p>
+              {{ form.password.label }} <br>
+              {{ form.password(size=32, class="form-control") }}
+              {% for error in form.password.errors %}
+              <span style="color: red;"> [{{ error }}]</span>
+              {% endfor %}
+          </p>
+          <p> {{ form.submit(class="btn btn-primary") }}</p>
+      </form>
+      Don't have an account? <a class="btn btn-success" href="{{ url_for('signup')}}">Sign up</a>
+    </div>
+  </div>
+{% endblock %}

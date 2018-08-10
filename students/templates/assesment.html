@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="list-group">
+    {% for assesment in assesments %}
+<div class="jumbotron">
+    <h1 class="display-5">{{ assesment[2] }}</h1>
+    <p class="lead">{{ assesment[3] }}</p>
+    <p>On: {{ assesment[4] }}</p>
+    <p>Teacher: {{ assesment[5] }}</p>
+    <p><a class="btn btn-lg btn-primary" href="/assesments/{{ assesment[0] }}/update" role="button">Update</a>
+        <a class="btn btn-lg btn-danger" href="/assesments/{{ assesment[0] }}/delete" role="button">Delete</a></p>
+  </div>
+    {% endfor %}
+</div>
+{% endblock %}
