@@ -1,12 +1,9 @@
 from flask import render_template, flash, redirect, url_for, session, request
-from students import app
-from sqlalchemy import create_engine
+from students import app, config
 from werkzeug.security import generate_password_hash, check_password_hash
 from students.forms import LoginForm, SignupForm, AssignmentsForm, AssesmentsForm
 
-# Replace user and password with your mysql password respedtively.
-# This should work with other SQL database too. Try by changing mysql:// to your DB.
-engine = create_engine('mysql://user:password@localhost/')
+engine = config.Config.engine
 
 class ServerError(Exception):pass
 
@@ -56,12 +53,13 @@ def login():
         if request.method == 'POST':
             username = request.form['username']
             password = request.form['password']
-            if connection.execute('SELECT * FROM records WHERE username="{}" AND password_hash="{}";'.format(username, generate_password_hash(password))):
-                    session['username'] = request.form['username']
-                    return redirect(url_for('index'))
+            user = list(connection.execute('SELECT * FROM records WHERE username="{}";'.format(username)))
+            if user != [] and check_password_hash(user[0][4], password):
+                session['username'] = request.form['username']
+                return redirect(url_for('index'))
             raise ServerError('Invalid Password.')
     except ServerError as e:
-        print(str(e))
+        flash(str(e))
     return render_template('login.html', form=form)
 
 @app.route('/logout')
