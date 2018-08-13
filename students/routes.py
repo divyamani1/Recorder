@@ -16,8 +16,10 @@ def index():
     if 'username' in session:
         connection = engine.connect()
         connection.execute('USE students')
-        upcoming_assesment = connection.execute('SELECT * FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S)) AS T WHERE date=(SELECT MIN(date) FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S)) AS T)')
-        upcoming_assignment = connection.execute('SELECT * FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S)) AS T WHERE deadline=(SELECT MIN(deadline) FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S)) AS T)')
+        user_id = connection.execute('SELECT id FROM records WHERE username="{}";'.format(session['username']))
+        user_id = list(user_id)[0][0]
+        upcoming_assesment = connection.execute('SELECT * FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE date=(SELECT MIN(date) FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S)) AS T);'.format(user_id))
+        upcoming_assignment = connection.execute('SELECT * FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE deadline=(SELECT MIN(deadline) FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S)) AS T);'.format(user_id))
         return render_template('index.html', user=session, upcoming_assesment=upcoming_assesment, upcoming_assignment=upcoming_assignment)
     return render_template('index.html', user=None, upcoming_assesment=None, upcoming_assignment=None)
 
@@ -25,11 +27,11 @@ def index():
 @app.route('/init_db')
 def init_db():
     connection = engine.connect()
-    connection.execute('CREATE DATABASE IF NOT EXISTS students')
-    connection.execute('USE students')
-    connection.execute('CREATE TABLE records (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name NVARCHAR(30), last_name NVARCHAR(30), username NVARCHAR(30) UNIQUE, password_hash NVARCHAR(128))')
-    connection.execute('CREATE TABLE assignments (asgn_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), deadline DATE, FOREIGN KEY (std_id) REFERENCES records(id))')
-    connection.execute('CREATE TABLE assesments (asses_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), FOREIGN KEY (std_id) REFERENCES records(id))')
+    connection.execute('CREATE DATABASE IF NOT EXISTS students;')
+    connection.execute('USE students;')
+    connection.execute('CREATE TABLE records (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name NVARCHAR(30), last_name NVARCHAR(30), username NVARCHAR(30) UNIQUE, password_hash NVARCHAR(128));')
+    connection.execute('CREATE TABLE assignments (asgn_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), deadline DATE, FOREIGN KEY (std_id) REFERENCES records(id));')
+    connection.execute('CREATE TABLE assesments (asses_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), FOREIGN KEY (std_id) REFERENCES records(id));')
     # TODO: Add subjects to allow users to inserrt there marks and analyze it.
     # connection.execute('CREATE TABLE subjects (id INTEGER NOT NULL PRIMARY KEY, subject_name NVARCHAR(30), year INTEGER, part NVARCHAR(2))')
     connection.close()
@@ -38,7 +40,7 @@ def init_db():
 @app.route('/drop_db')
 def drop_db():
     connection = engine.connect()
-    connection.execute('DROP DATABASE students')
+    connection.execute('DROP DATABASE students;')
     connection.close()
     return "Database dropped successfully."
 
@@ -47,14 +49,14 @@ def drop_db():
 def login():
     form = LoginForm()
     connection = engine.connect()
-    connection.execute('USE students')
+    connection.execute('USE students;')
     if 'username' in session:
         return redirect(url_for('index'))
     try:
         if request.method == 'POST':
             username = request.form['username']
             password = request.form['password']
-            if connection.execute('SELECT * FROM records WHERE username="{}" AND password_hash="{}"'.format(username, generate_password_hash(password))):
+            if connection.execute('SELECT * FROM records WHERE username="{}" AND password_hash="{}";'.format(username, generate_password_hash(password))):
                     session['username'] = request.form['username']
                     return redirect(url_for('index'))
             raise ServerError('Invalid Password.')
@@ -71,7 +73,7 @@ def logout():
 def signup():
     form = SignupForm()
     connection = engine.connect()
-    connection.execute('USE students')
+    connection.execute('USE students;')
     if 'username' in session:
         return redirect(url_for('index'))
     try:
@@ -81,7 +83,7 @@ def signup():
             last_name = request.form['last_name']
             password = request.form['password']
             password_hash = generate_password_hash(password)
-            connection.execute('INSERT INTO records (first_name, last_name, username, password_hash) VALUES ("{0}", "{1}", "{2}", "{3}")'.format(first_name, last_name, username, password_hash))
+            connection.execute('INSERT INTO records (first_name, last_name, username, password_hash) VALUES ("{0}", "{1}", "{2}", "{3}");'.format(first_name, last_name, username, password_hash))
             flash("Successfully Signed up.")
             return redirect(url_for('index'))
     except ServerError as e:
@@ -92,9 +94,9 @@ def signup():
 @app.route('/assignments', methods=['GET'])
 def get_assignments():
     connection = engine.connect()
-    connection.execute('USE students')
+    connection.execute('USE students;')
     if 'username' in session:
-        assignments = connection.execute('SELECT * FROM assignments WHERE std_id = (SELECT id FROM records WHERE username="{}")'.format(session['username']))
+        assignments = connection.execute('SELECT * FROM assignments WHERE std_id = (SELECT id FROM records WHERE username="{}") ORDER BY deadline ASC;'.format(session['username']))
         connection.close()
         return render_template('assignments.html', assignments=assignments, user=session)
     return redirect(url_for('index'))
@@ -105,7 +107,7 @@ def add_assignments():
     connection = engine.connect()
     connection.execute('USE students')
     if 'username' in session:
-        user = connection.execute('SELECT id FROM records WHERE username="{}"'.format(session['username']))
+        user = connection.execute('SELECT id FROM records WHERE username="{}";'.format(session['username']))
         std_id = list(user)[0][0]
         if request.method == 'POST':
             subject = request.form['subject']
@@ -113,7 +115,7 @@ def add_assignments():
             date = request.form['date']
             teacher = request.form['teacher']
             deadline = request.form['deadline']
-            connection.execute('INSERT INTO assignments (subject, details, date, teacher, deadline, std_id) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}", "{5}")'.format(subject, details, date, teacher, deadline, std_id))
+            connection.execute('INSERT INTO assignments (subject, details, date, teacher, deadline, std_id) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}", "{5}");'.format(subject, details, date, teacher, deadline, std_id))
             flash("Successfully Added.")
             return redirect(url_for('get_assignments'))
     connection.close()
@@ -124,7 +126,7 @@ def get_assignment(assignment_id):
     connection = engine.connect()
     connection.execute('USE students')
     if 'username' in session:
-        assignment = connection.execute('SELECT * FROM assignments WHERE asgn_id={}'.format(assignment_id))
+        assignment = connection.execute('SELECT * FROM assignments WHERE asgn_id={};'.format(assignment_id))
         return render_template('assignment.html', assignments=assignment, user=session)
     return redirect(url_for('index'))
 
@@ -132,7 +134,7 @@ def get_assignment(assignment_id):
 def update_assignment(assignment_id):
     form = AssignmentsForm()
     connection = engine.connect()
-    connection.execute('USE students')
+    connection.execute('USE students;')
     if 'username' in session:
         if request.method == 'POST':
             subject = request.form['subject']
@@ -140,7 +142,7 @@ def update_assignment(assignment_id):
             date = request.form['date']
             teacher = request.form['teacher']
             deadline = request.form['deadline']
-            assignment = connection.execute('SELECT * FROM assignments WHERE asgn_id={}'.format(assignment_id))
+            assignment = connection.execute('SELECT * FROM assignments WHERE asgn_id={};'.format(assignment_id))
             assignment = list(assignment)[0]
             if subject=="":
                 subject = assignment[2]
@@ -152,7 +154,7 @@ def update_assignment(assignment_id):
                 teacher = assignment[5]
             if deadline=="":
                 deadline = assignment[6]
-            connection.execute('UPDATE assignments SET subject="{0}", details="{1}", date="{2}", teacher="{3}", deadline="{4}"'.format(subject, details, date, teacher, deadline))
+            connection.execute('UPDATE assignments SET subject="{0}", details="{1}", date="{2}", teacher="{3}", deadline="{4}";'.format(subject, details, date, teacher, deadline))
             flash('Successfully updated')
             return redirect(url_for('get_assignment', assignment_id=assignment_id))
     connection.close()
@@ -161,9 +163,9 @@ def update_assignment(assignment_id):
 @app.route('/assignments/<assignment_id>/delete')
 def delete_assignment(assignment_id):
     connection = engine.connect()
-    connection.execute('USE students')
+    connection.execute('USE students;')
     if 'username' in session:
-        connection.execute('DELETE FROM assignments WHERE asgn_id={}'.format(assignment_id))
+        connection.execute('DELETE FROM assignments WHERE asgn_id={};'.format(assignment_id))
         flash("Assignment Successfully deleted.")
         return redirect('/assignments')
     return redirect(url_for('index'))
@@ -173,9 +175,9 @@ def delete_assignment(assignment_id):
 @app.route('/assesments', methods=['GET'])
 def get_assesments():
     connection = engine.connect()
-    connection.execute('USE students')
+    connection.execute('USE students;')
     if 'username' in session:
-        assesments = connection.execute('SELECT * FROM assesments WHERE std_id = (SELECT id FROM records WHERE username="{}")'.format(session['username']))
+        assesments = connection.execute('SELECT * FROM assesments WHERE std_id = (SELECT id FROM records WHERE username="{}") ORDER BY date ASC;'.format(session['username']))
         connection.close()
         return render_template('assesments.html', assesments=assesments, user=session)
     return redirect(url_for('index'))
@@ -186,14 +188,14 @@ def add_assesments():
     connection = engine.connect()
     connection.execute('USE students')
     if 'username' in session:
-        user = connection.execute('SELECT id FROM records WHERE username="{}"'.format(session['username']))
+        user = connection.execute('SELECT id FROM records WHERE username="{}";'.format(session['username']))
         std_id = list(user)[0][0]
         if request.method == 'POST':
             subject = request.form['subject']
             details = request.form['details']
             date = request.form['date']
             teacher = request.form['teacher']
-            connection.execute('INSERT INTO assesments (subject, details, date, teacher, std_id) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}")'.format(subject, details, date, teacher, std_id))
+            connection.execute('INSERT INTO assesments (subject, details, date, teacher, std_id) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}");'.format(subject, details, date, teacher, std_id))
             flash("Successfully Added.")
             return redirect(url_for('get_assesments'))
     connection.close()
@@ -204,7 +206,7 @@ def get_assesment(assesment_id):
     connection = engine.connect()
     connection.execute('USE students')
     if 'username' in session:
-        assesment = connection.execute('SELECT * FROM assesments WHERE asses_id={}'.format(assesment_id))
+        assesment = connection.execute('SELECT * FROM assesments WHERE asses_id={};'.format(assesment_id))
         return render_template('assesment.html', assesments=assesment, user=session)
     return redirect(url_for('index'))
 
@@ -219,7 +221,7 @@ def update_assesment(assesment_id):
             details = request.form['details']
             date = request.form['date']
             teacher = request.form['teacher']
-            assesment = connection.execute('SELECT * FROM assesments WHERE asses_id={}'.format(assesment_id))
+            assesment = connection.execute('SELECT * FROM assesments WHERE asses_id={};'.format(assesment_id))
             assesment = list(assesment)[0]
             if subject=="":
                 subject = assesment[2]
@@ -229,7 +231,7 @@ def update_assesment(assesment_id):
                 date = assesment[4]
             if teacher=="":
                 teacher = assesment[5]
-            connection.execute('UPDATE assesments SET subject="{0}", details="{1}", date="{2}", teacher="{3}"'.format(subject, details, date, teacher))
+            connection.execute('UPDATE assesments SET subject="{0}", details="{1}", date="{2}", teacher="{3}";'.format(subject, details, date, teacher))
             flash('Successfully updated')
             return redirect(url_for('get_assesment', assesment_id=assesment_id))
     connection.close()
@@ -240,7 +242,7 @@ def delete_assesment(assesment_id):
     connection = engine.connect()
     connection.execute('USE students')
     if 'username' in session:
-        connection.execute('DELETE FROM assesments WHERE asses_id={}'.format(assesment_id))
+        connection.execute('DELETE FROM assesments WHERE asses_id={};'.format(assesment_id))
         flash("Assesment Successfully deleted.")
         return redirect('/assesments')
     return redirect(url_for('index'))
