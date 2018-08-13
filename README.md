@@ -1,5 +1,5 @@
 # Recorder: Record your Assignments and Assesments.
-Easily arrange and view your assignment and assesment details with this Recorder so that you never miss them.
+Easily arrange and view your assignment and assesment details with Recorder so that you never miss them.
 
 ### Requirements
 * Flask Web Framework
