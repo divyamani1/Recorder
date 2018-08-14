@@ -22,6 +22,8 @@ Easily arrange and view your assignment and assesment details with Recorder so t
   
   `source venv/bin/activate`
   
+  `pip install -r requirements.txt`
+  
 * Add Recorder to `FLASK_APP` variable.
 
   `export FLASK_APP=std_record.py`
