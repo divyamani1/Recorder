@@ -15,8 +15,12 @@ def index():
         connection.execute('USE students')
         user_id = connection.execute('SELECT id FROM records WHERE username="{}";'.format(session['username']))
         user_id = list(user_id)[0][0]
-        upcoming_assesment = connection.execute('SELECT * FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE date=(SELECT MIN(date) FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S)) AS T);'.format(user_id))
-        upcoming_assignment = connection.execute('SELECT * FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE deadline=(SELECT MIN(deadline) FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S)) AS T);'.format(user_id))
+        upcoming_assesment_query = connection.execute('SELECT * FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE date=(SELECT MIN(date) FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S) AND std_id={0}) AS T);'.format(user_id))
+        upcoming_assesment = list(upcoming_assesment_query)
+        if not list(upcoming_assesment): upcoming_assesment = None
+        upcoming_assignment_query = connection.execute('SELECT * FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE deadline=(SELECT MIN(deadline) FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S) AND std_id={0}) AS T);'.format(user_id))
+        upcoming_assignment = list(upcoming_assignment_query)
+        if not list(upcoming_assignment): upcoming_assignment = None
         return render_template('index.html', user=session, upcoming_assesment=upcoming_assesment, upcoming_assignment=upcoming_assignment)
     return render_template('index.html', user=None, upcoming_assesment=None, upcoming_assignment=None)
 
@@ -27,9 +31,10 @@ def init_db():
     connection.execute('CREATE DATABASE IF NOT EXISTS students;')
     connection.execute('USE students;')
     connection.execute('CREATE TABLE records (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name NVARCHAR(30), last_name NVARCHAR(30), username NVARCHAR(30) UNIQUE, password_hash NVARCHAR(128));')
+    # TODO: Add archive column for archived/completed assignments or assesments.
     connection.execute('CREATE TABLE assignments (asgn_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), deadline DATE, FOREIGN KEY (std_id) REFERENCES records(id));')
     connection.execute('CREATE TABLE assesments (asses_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), FOREIGN KEY (std_id) REFERENCES records(id));')
-    # TODO: Add subjects to allow users to inserrt there marks and analyze it.
+    # TODO: Add subjects to allow users to insert there marks and analyze it.
     # connection.execute('CREATE TABLE subjects (id INTEGER NOT NULL PRIMARY KEY, subject_name NVARCHAR(30), year INTEGER, part NVARCHAR(2))')
     connection.close()
     return "Database initialized successfully."
