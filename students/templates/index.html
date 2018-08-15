@@ -9,7 +9,7 @@
     {% if upcoming_assesment %}
     {% for assesment in upcoming_assesment %}
 <div class="jumbotron">
-    <h1 class="display-5">{{ assesment[2] }}</h1>
+    <h1 class="display-5"><a href="/assesments/{{ assesment[0] }}">{{ assesment[2] }}</a></h1>
     <p class="lead">{{ assesment[3] }}</p>
     <p>On: {{ assesment[4] }}</p>
     <p>Teacher: {{ assesment[5] }}</p>
@@ -24,7 +24,7 @@
         {% if upcoming_assignment %}
 {% for assignment in upcoming_assignment %}
 <div class="jumbotron">
-    <h1 class="display-5">{{ assignment[2] }}</h1>
+    <h1 class="display-5"><a href="/assignments/{{ assignment[0] }}">{{ assignment[2] }}</a></h1>
     <p class="lead">{{ assignment[3] }}</p>
     <p>Given: {{ assignment[4] }}</p>
     <p>Submission: {{ assignment[6] }}</p>

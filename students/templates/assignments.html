@@ -20,4 +20,24 @@
     <h5>No Assignments!</h5>
     {% endif %}
 </div>
+<hr>
+<h5>Completed:</h5>
+<div class="list-group">
+  {% if com_assignments %}
+    {% for assignment in com_assignments %}
+    <hr>
+    <a href="/assignments/{{ assignment[0] }}" class="list-group-item list-group-item-action list-group-item-primary flex-column align-items-start active">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ assignment[2] }}</h5>
+        Given: {{ assignment[4] }}
+        Submission: {{ assignment[6] }}
+      </div>
+      <p class="mb-1">{{ assignment[3] }}</p>
+      By: {{ assignment[5] }}
+    </a>
+    {% endfor %}
+    {% else %}
+    <h5>No completed Assignments!</h5>
+    {% endif %}
+</div>
 {% endblock %}

@@ -19,4 +19,23 @@
     <h5>No assesments!</h5>
     {% endif %}
 </div>
+<hr>
+<h5>Completed: </h5>
+<div class="list-group">
+  {% if com_assesments %}
+    {% for assesment in com_assesments %}
+    <hr>
+    <a href="/assesments/{{ assesment[0] }}" class="list-group-item list-group-item-action list-group-item-primary flex-column align-items-start active">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1">{{ assesment[2] }}</h5>
+        On: {{ assesment[4] }}
+      </div>
+      <p class="mb-1">{{ assesment[3] }}</p>
+      By: {{ assesment[5] }}
+    </a>
+    {% endfor %}
+    {% else %}
+    <h5>No completed assesments!</h5>
+    {% endif %}
+</div>
 {% endblock %}
