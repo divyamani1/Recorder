@@ -1,11 +1,16 @@
+from datetime import datetime
 from flask import render_template, flash, redirect, url_for, session, request
 from students import app, config
 from werkzeug.security import generate_password_hash, check_password_hash
 from students.forms import LoginForm, SignupForm, AssignmentsForm, AssesmentsForm
 
 engine = config.Config.engine
+current_date = datetime.date(datetime.utcnow())
 
 class ServerError(Exception):pass
+
+def convert_str_to_date(string_date):
+    return datetime.strptime(string_date, '%Y-%m-%d')
 
 @app.route('/')
 @app.route('/index')
@@ -17,10 +22,11 @@ def index():
         user_id = list(user_id)[0][0]
         upcoming_assesment_query = connection.execute('SELECT * FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE date=(SELECT MIN(date) FROM (SELECT * FROM assesments WHERE date>=(SELECT CURDATE() AS S) AND std_id={0}) AS T);'.format(user_id))
         upcoming_assesment = list(upcoming_assesment_query)
-        if not list(upcoming_assesment): upcoming_assesment = None
+        if not upcoming_assesment: upcoming_assesment = None
         upcoming_assignment_query = connection.execute('SELECT * FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S) AND std_id={0}) AS T WHERE deadline=(SELECT MIN(deadline) FROM (SELECT * FROM assignments WHERE deadline>=(SELECT CURDATE() AS S) AND std_id={0}) AS T);'.format(user_id))
         upcoming_assignment = list(upcoming_assignment_query)
-        if not list(upcoming_assignment): upcoming_assignment = None
+        if not upcoming_assignment: upcoming_assignment = None
+        connection.close()
         return render_template('index.html', user=session, upcoming_assesment=upcoming_assesment, upcoming_assignment=upcoming_assignment)
     return render_template('index.html', user=None, upcoming_assesment=None, upcoming_assignment=None)
 
@@ -32,8 +38,8 @@ def init_db():
     connection.execute('USE students;')
     connection.execute('CREATE TABLE records (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name NVARCHAR(30), last_name NVARCHAR(30), username NVARCHAR(30) UNIQUE, password_hash NVARCHAR(128));')
     # TODO: Add archive column for archived/completed assignments or assesments.
-    connection.execute('CREATE TABLE assignments (asgn_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), deadline DATE, FOREIGN KEY (std_id) REFERENCES records(id));')
-    connection.execute('CREATE TABLE assesments (asses_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), FOREIGN KEY (std_id) REFERENCES records(id));')
+    connection.execute('CREATE TABLE assignments (asgn_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), deadline DATE, completed BIT DEFAULT 0, FOREIGN KEY (std_id) REFERENCES records(id));')
+    connection.execute('CREATE TABLE assesments (asses_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, std_id INTEGER NOT NULL, subject NVARCHAR(30), details NVARCHAR(300), date DATE, teacher NVARCHAR(30), completed BIT DEFAULT 0, FOREIGN KEY (std_id) REFERENCES records(id));')
     # TODO: Add subjects to allow users to insert there marks and analyze it.
     # connection.execute('CREATE TABLE subjects (id INTEGER NOT NULL PRIMARY KEY, subject_name NVARCHAR(30), year INTEGER, part NVARCHAR(2))')
     connection.close()
@@ -62,6 +68,7 @@ def login():
             if user != [] and check_password_hash(user[0][4], password):
                 session['username'] = request.form['username']
                 return redirect(url_for('index'))
+            connection.close()
             raise ServerError('Invalid Password.')
     except ServerError as e:
         flash(str(e))
@@ -88,6 +95,7 @@ def signup():
             password_hash = generate_password_hash(password)
             connection.execute('INSERT INTO records (first_name, last_name, username, password_hash) VALUES ("{0}", "{1}", "{2}", "{3}");'.format(first_name, last_name, username, password_hash))
             flash("Successfully Signed up.")
+            connection.close()
             return redirect(url_for('index'))
     except ServerError as e:
         print(str(e))
@@ -99,9 +107,15 @@ def get_assignments():
     connection = engine.connect()
     connection.execute('USE students;')
     if 'username' in session:
-        assignments = connection.execute('SELECT * FROM assignments WHERE std_id = (SELECT id FROM records WHERE username="{}") ORDER BY deadline ASC;'.format(session['username']))
+        # Upcoming Assignments
+        assignments_query = connection.execute('SELECT * FROM assignments WHERE std_id = (SELECT id FROM records WHERE username="{}") AND completed=0 ORDER BY deadline ASC;'.format(session['username']))
+        assignments = list(assignments_query)
+        if not assignments: assignments = None
+        # Completed Assignments
+        com_assignments_query = connection.execute('SELECT * FROM assignments WHERE std_id = (SELECT id FROM records WHERE username="{}") AND completed=1 ORDER BY deadline DESC;'.format(session['username']))
+        com_assignments = list(com_assignments_query)
         connection.close()
-        return render_template('assignments.html', assignments=assignments, user=session)
+        return render_template('assignments.html', assignments=assignments, user=session, com_assignments=com_assignments)
     return redirect(url_for('index'))
 
 @app.route('/add_assignments', methods=['GET', 'POST'])
@@ -118,7 +132,11 @@ def add_assignments():
             date = request.form['date']
             teacher = request.form['teacher']
             deadline = request.form['deadline']
-            connection.execute('INSERT INTO assignments (subject, details, date, teacher, deadline, std_id) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}", "{5}");'.format(subject, details, date, teacher, deadline, std_id))
+            deadline_val = datetime.date(convert_str_to_date(deadline))
+            completed = 0
+            if deadline_val < current_date:
+                completed = 1
+            connection.execute('INSERT INTO assignments (subject, details, date, teacher, deadline, std_id, completed) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}", "{5}", {6});'.format(subject, details, date, teacher, deadline, std_id, completed))
             flash("Successfully Added.")
             return redirect(url_for('get_assignments'))
     connection.close()
@@ -131,6 +149,7 @@ def get_assignment(assignment_id):
     if 'username' in session:
         assignment = connection.execute('SELECT * FROM assignments WHERE asgn_id={};'.format(assignment_id))
         return render_template('assignment.html', assignments=assignment, user=session)
+    connection.close()
     return redirect(url_for('index'))
 
 @app.route('/assignments/<assignment_id>/update', methods=['GET', 'POST'])
@@ -145,6 +164,7 @@ def update_assignment(assignment_id):
             date = request.form['date']
             teacher = request.form['teacher']
             deadline = request.form['deadline']
+            deadline_val = datetime.date(convert_str_to_date(deadline))
             assignment = connection.execute('SELECT * FROM assignments WHERE asgn_id={};'.format(assignment_id))
             assignment = list(assignment)[0]
             if subject=="":
@@ -157,7 +177,10 @@ def update_assignment(assignment_id):
                 teacher = assignment[5]
             if deadline=="":
                 deadline = assignment[6]
-            connection.execute('UPDATE assignments SET subject="{0}", details="{1}", date="{2}", teacher="{3}", deadline="{4}";'.format(subject, details, date, teacher, deadline))
+            completed = 0
+            if deadline_val < current_date:
+                completed = 1
+            connection.execute('UPDATE assignments SET subject="{0}", details="{1}", date="{2}", teacher="{3}", deadline="{4}", completed={5} WHERE asgn_id={6};'.format(subject, details, date, teacher, deadline, completed, assignment_id))
             flash('Successfully updated')
             return redirect(url_for('get_assignment', assignment_id=assignment_id))
     connection.close()
@@ -171,18 +194,22 @@ def delete_assignment(assignment_id):
         connection.execute('DELETE FROM assignments WHERE asgn_id={};'.format(assignment_id))
         flash("Assignment Successfully deleted.")
         return redirect('/assignments')
+    connection.close()
     return redirect(url_for('index'))
-
-
 
 @app.route('/assesments', methods=['GET'])
 def get_assesments():
     connection = engine.connect()
     connection.execute('USE students;')
     if 'username' in session:
-        assesments = connection.execute('SELECT * FROM assesments WHERE std_id = (SELECT id FROM records WHERE username="{}") ORDER BY date ASC;'.format(session['username']))
+        # Upcoming Assesments
+        assesments_query = connection.execute('SELECT * FROM assesments WHERE std_id = (SELECT id FROM records WHERE username="{}") AND completed=0 ORDER BY date ASC;'.format(session['username']))
+        assesments = list(assesments_query)
+        # Completed Assesments
+        com_assesments_query = connection.execute('SELECT * FROM assesments WHERE std_id = (SELECT id FROM records WHERE username="{}") AND completed=1 ORDER BY date DESC;'.format(session['username']))
+        com_assesments = list(com_assesments_query)
         connection.close()
-        return render_template('assesments.html', assesments=assesments, user=session)
+        return render_template('assesments.html', assesments=assesments, com_assesments=com_assesments, user=session)
     return redirect(url_for('index'))
 
 @app.route('/add_assesments', methods=['GET', 'POST'])
@@ -198,7 +225,11 @@ def add_assesments():
             details = request.form['details']
             date = request.form['date']
             teacher = request.form['teacher']
-            connection.execute('INSERT INTO assesments (subject, details, date, teacher, std_id) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}");'.format(subject, details, date, teacher, std_id))
+            date_val = datetime.date(convert_str_to_date(date))
+            completed = 0
+            if date_val < current_date:
+                completed = 1
+            connection.execute('INSERT INTO assesments (subject, details, date, teacher, std_id, completed) VALUES ("{0}", "{1}", "{2}", "{3}", "{4}", {5});'.format(subject, details, date, teacher, std_id, completed))
             flash("Successfully Added.")
             return redirect(url_for('get_assesments'))
     connection.close()
@@ -211,6 +242,7 @@ def get_assesment(assesment_id):
     if 'username' in session:
         assesment = connection.execute('SELECT * FROM assesments WHERE asses_id={};'.format(assesment_id))
         return render_template('assesment.html', assesments=assesment, user=session)
+    connection.close()
     return redirect(url_for('index'))
 
 @app.route('/assesments/<assesment_id>/update', methods=['GET', 'POST'])
@@ -224,6 +256,7 @@ def update_assesment(assesment_id):
             details = request.form['details']
             date = request.form['date']
             teacher = request.form['teacher']
+            date_val = datetime.date(convert_str_to_date(date))
             assesment = connection.execute('SELECT * FROM assesments WHERE asses_id={};'.format(assesment_id))
             assesment = list(assesment)[0]
             if subject=="":
@@ -234,7 +267,10 @@ def update_assesment(assesment_id):
                 date = assesment[4]
             if teacher=="":
                 teacher = assesment[5]
-            connection.execute('UPDATE assesments SET subject="{0}", details="{1}", date="{2}", teacher="{3}";'.format(subject, details, date, teacher))
+            completed = 0
+            if date_val < current_date:
+                completed = 1
+            connection.execute('UPDATE assesments SET subject="{0}", details="{1}", date="{2}", teacher="{3}", completed={4} WHERE asses_id={5};'.format(subject, details, date, teacher, completed, assesment_id))
             flash('Successfully updated')
             return redirect(url_for('get_assesment', assesment_id=assesment_id))
     connection.close()
@@ -248,6 +284,7 @@ def delete_assesment(assesment_id):
         connection.execute('DELETE FROM assesments WHERE asses_id={};'.format(assesment_id))
         flash("Assesment Successfully deleted.")
         return redirect('/assesments')
+    connection.close()
     return redirect(url_for('index'))
 
     
